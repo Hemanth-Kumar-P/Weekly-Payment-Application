@@ -1,0 +1,513 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Payment and Settlement Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f8f8f8;
+        }
+        h1 {
+            font-size: 2em;
+            margin-top: 20px;
+            color: teal;
+        }
+        input[type="text"], input[type="password"], input[type="date"], input[type="number"] {
+            padding: 10px;
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 200px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #5a67d8;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #434190;
+        }
+        .delete-button {
+            background-color: red;
+        }
+        .delete-button:hover {
+            background-color: darkred;
+        }
+        .add-button {
+            background-color: green;
+        }
+        .add-button:hover {
+            background-color: darkgreen;
+        }
+        .back-button {
+            background-color: skyblue;
+        }
+        .back-button:hover {
+            background-color: #87ceeb;
+        }
+        .reset-button {
+            background-color: orange;
+        }
+        .reset-button:hover {
+            background-color: darkorange;
+        }
+        .settle-button {
+            background-color: blue;
+        }
+        .settle-button:hover {
+            background-color: darkblue;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 15px; /* Increased padding for larger column size */
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #5a67d8;
+            color: white;
+        }
+        .scrollable-table {
+            overflow-x: auto;
+        }
+        .editable {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 5px;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="mainHeading">Welcome</h1><h1> Please Enter Password!</h1>
+    <div id="loginForm">
+        <input type="password" id="password" placeholder="Enter Password">
+        <button onclick="login()">Login</button>
+    </div>
+    <div id="selectionForm" style="display: none;">
+        <input type="text" id="newManagementName" placeholder="Enter New Management Name">
+        <button onclick="createNewManagement()">Create New Management</button>
+        <div id="existingManagements">
+            <!-- Existing management buttons will be added here -->
+        </div>
+    </div>
+    <div id="mainContent" style="display: none;">
+        <button class="back-button" onclick="goBack()">Back</button>
+        <button class="delete-button" onclick="deleteManagement()">Delete Management</button>
+        <div>
+            <input type="text" id="memberName" placeholder="Enter Member Name">
+            <button class="add-button" onclick="addMember()">Add Member</button>
+        </div>
+        <div>
+            <input type="date" id="startDate" placeholder="Start Date" onchange="updateTable()">
+        </div>
+        <h2>Members</h2>
+        <div class="scrollable-table">
+            <table>
+                <thead id="tableHeader">
+                    <tr>
+                        <th>Member ID</th>
+                        <th>Name</th>
+                        <th>Total Paid</th>
+                        <th>Settlement Date</th>
+                        <th>Settled Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="membersBody">
+                    <!-- Add member rows here -->
+                </tbody>
+            </table>
+        </div>
+        <button class="settle-button" onclick="addWeeklyPayment()">Add Weekly Payment</button>
+        <h2>Settle Week Payment</h2>
+        <div>
+            <input type="text" id="settleMemberId" placeholder="Enter Member ID">
+            <input type="number" id="totalAmount" placeholder="Enter Total Amount">
+            <input type="number" id="interestAmount" placeholder="Enter Interest Amount">
+            <input type="number" id="settlementAmount" placeholder="Enter Settlement Amount" readonly>
+            <button class="settle-button" onclick="calculateSettlement()">Calculate Settlement</button>
+            <button class="settle-button" onclick="settleWeekPayment()">Settle Payment</button>
+        </div>
+        <h2>Settlements</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Member ID</th>
+                    <th>Name</th>
+                    <th>Settlement Date</th>
+                    <th>Settled Amount</th>
+                </tr>
+            </thead>
+            <tbody id="settlementsBody">
+                <!-- Add settlement rows here -->
+            </tbody>
+        </table>
+        <button class="reset-button" onclick="resetData()">Reset Data</button>
+    </div>
+
+    <footer style="margin-top: 20px; font-size: 0.9em; color: #666;">
+        &copy; Hemanth Kumar Pasupuleti
+    </footer>
+
+    <script>
+        const correctPassword = "123"; // Set your password here
+        let selectedManagement = '';
+
+        function login() {
+            const password = document.getElementById("password").value;
+            if (password === correctPassword) {
+                document.getElementById("loginForm").style.display = "none";
+                document.getElementById("selectionForm").style.display = "block";
+                loadExistingManagements();
+            } else {
+                alert("Incorrect password. Please try again.");
+            }
+        }
+
+        function loadExistingManagements() {
+            const existingManagements = JSON.parse(localStorage.getItem('managements')) || [];
+            const existingManagementsDiv = document.getElementById("existingManagements");
+            existingManagementsDiv.innerHTML = '';
+            existingManagements.forEach(management => {
+                const button = document.createElement("button");
+                button.innerText = management;
+                button.onclick = () => selectManagement(management);
+                existingManagementsDiv.appendChild(button);
+            });
+        }
+
+        function createNewManagement() {
+            const newManagementName = document.getElementById("newManagementName").value;
+            if (newManagementName) {
+                const existingManagements = JSON.parse(localStorage.getItem('managements')) || [];
+                if (!existingManagements.includes(newManagementName)) {
+                    existingManagements.push(newManagementName);
+                    localStorage.setItem('managements', JSON.stringify(existingManagements));
+                    loadExistingManagements();
+                } else {
+                    alert("Management name already exists.");
+                }
+                document.getElementById("newManagementName").value = '';
+            } else {
+                alert("Please enter a management name.");
+            }
+        }
+
+        function selectManagement(management) {
+            selectedManagement = management;
+            document.getElementById("selectionForm").style.display = "none";
+            document.getElementById("mainContent").style.display = "block";
+            document.getElementById("mainHeading").innerText = `Weekly Payment and Settlement Tracker ${management}`;
+            loadFromLocalStorage();
+        }
+
+        function goBack() {
+            document.getElementById("mainContent").style.display = "none";
+            document.getElementById("selectionForm").style.display = "block";
+        }
+
+        function deleteManagement() {
+            if (confirm("Are you sure you want to delete this management?")) {
+                const existingManagements = JSON.parse(localStorage.getItem('managements')) || [];
+                const index = existingManagements.indexOf(selectedManagement);
+                if (index > -1) {
+                    existingManagements.splice(index, 1);
+                    localStorage.setItem('managements', JSON.stringify(existingManagements));
+                    localStorage.removeItem(`members_${selectedManagement}`);
+                    localStorage.removeItem(`settlements_${selectedManagement}`);
+                    localStorage.removeItem(`startDate_${selectedManagement}`);
+                    goBack();
+                    loadExistingManagements();
+                }
+            }
+        }
+
+        let members = [];
+        let settlements = [];
+
+        // Load members and settlements from localStorage
+        function loadFromLocalStorage() {
+            const storedMembers = localStorage.getItem(`members_${selectedManagement}`);
+            const storedSettlements = localStorage.getItem(`settlements_${selectedManagement}`);
+            const storedStartDate = localStorage.getItem(`startDate_${selectedManagement}`);
+            if (storedMembers) members = JSON.parse(storedMembers);
+            if (storedSettlements) settlements = JSON.parse(storedSettlements);
+            if (storedStartDate) document.getElementById("startDate").value = storedStartDate;
+            renderMembers();
+            renderSettlements();
+            updateTable();
+        }
+
+        // Save members and settlements to localStorage
+        function saveToLocalStorage() {
+            localStorage.setItem(`members_${selectedManagement}`, JSON.stringify(members));
+            localStorage.setItem(`settlements_${selectedManagement}`, JSON.stringify(settlements));
+            localStorage.setItem(`startDate_${selectedManagement}`, document.getElementById("startDate").value);
+        }
+
+        function addMember() {
+            const memberName = document.getElementById("memberName").value;
+            const memberId = members.length + 1;
+            const startDate = new Date(document.getElementById("startDate").value);
+            const weeks = getWeeksFromStartDate(startDate, 10);
+            if (memberName) {
+                members.push({ id: memberId, name: memberName, payments: Array(weeks.length).fill(0) });
+                saveToLocalStorage();
+                renderMembers();
+                document.getElementById("memberName").value = '';
+            } else {
+                alert("Please enter a member name.");
+            }
+        }
+
+        function renderMembers() {
+            const membersBody = document.getElementById("membersBody");
+            membersBody.innerHTML = '';
+            members.forEach(member => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${member.id}</td>
+                    <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'name', this.innerText)">${member.name}</td>
+                     <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'totalAmount', parseFloat(this.innerText) || 0)">${member.totalAmount || ''}</td>
+                    <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'settlementDate', this.innerText)">${member.settlementDate || ''}</td>
+                    <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'settlementAmount', this.innerText)">${member.settlementAmount || ''}</td>
+                    ${member.payments.map((payment, index) => `<td class="editable" contenteditable="true" onblur="updatePayment(${member.id}, ${index}, this.innerText)">${payment}</td>`).join('')}
+                `;
+                membersBody.appendChild(row);
+            });
+        }
+
+        function updateMember(memberId, field, value) {
+            const member = members.find(m => m.id === memberId);
+            if (member) {
+                member[field] = value;
+                saveToLocalStorage();
+                renderMembers();
+            }
+        }
+
+        function updatePayment(memberId, weekIndex, value) {
+            const member = members.find(m => m.id === memberId);
+            if (member) {
+                member.payments[weekIndex] = parseFloat(value) || 0;
+                saveToLocalStorage();
+                renderMembers();
+            }
+        }
+
+        function calculateSettlement() {
+            const totalAmount = parseFloat(document.getElementById("totalAmount").value);
+            const interestAmount = parseFloat(document.getElementById("interestAmount").value);
+            if (!isNaN(totalAmount) && !isNaN(interestAmount)) {
+                const interestPerTenThousand = (totalAmount / 10000) * interestAmount;
+                const settlementAmount = totalAmount - interestPerTenThousand;
+                document.getElementById("settlementAmount").value = settlementAmount.toFixed(2);
+                const weeklyPayment = totalAmount / 10;
+                document.getElementById("paymentAmount").value = weeklyPayment.toFixed(2);
+            } else {
+                alert("Please enter valid amounts for Total Amount and Interest Amount.");
+            }
+        }
+
+        function addWeeklyPayment() {  
+    const memberId = parseInt(document.getElementById("settleMemberId").value);
+    const totalAmount = parseFloat(document.getElementById("totalAmount").value);
+    const weeklyPayment = totalAmount / 10;
+
+    console.log("Member ID:", memberId);
+    console.log("Total Amount:", totalAmount);
+    console.log("Weekly Payment:", weeklyPayment);
+
+    if (memberId && !isNaN(weeklyPayment)) {
+        const member = members.find(m => m.id === memberId);
+
+        if (member) {
+            const currentDate = new Date().toLocaleDateString();
+            console.log("Current Date:", currentDate);
+            
+            let paymentAdded = false;  // Flag to check if payment was added
+
+            for (let i = 0; i < member.payments.length; i++) {
+                if (member.payments[i] === 0) {  // Assuming 0 indicates an unpaid slot
+                    member.payments[i] = currentDate;  // Insert the current date
+                    paymentAdded = true;
+                    console.log(`Payment added at index ${i}`);
+                    break;
+                }
+            }
+
+            if (!paymentAdded) {
+                alert("All payment slots are already filled.");
+            }
+
+            saveToLocalStorage();
+            renderMembers();
+        } else {
+            alert("Member not found.");
+            console.error("Member not found with ID:", memberId);
+        }
+    } else {
+        alert("Please enter a valid member ID and calculate the weekly payment.");
+        console.error("Invalid member ID or weekly payment.");
+    }
+}
+
+
+
+        function settleWeekPayment() {
+            const memberId = parseInt(document.getElementById("settleMemberId").value);
+            const settlementAmount = parseFloat(document.getElementById("settlementAmount").value);
+            const settlementDate = new Date().toLocaleDateString();
+
+            if (memberId && settlementAmount) {
+                const member = members.find(m => m.id === memberId);
+                if (member) {
+                    const existingSettlement = settlements.find(s => s.memberId === memberId);
+                    if (existingSettlement) {
+                        alert("This member already has a settlement.");
+                        return;
+                    }
+                    member.settlementAmount = settlementAmount;
+                    member.settlementDate = settlementDate;
+
+                    settlements.push({ memberId, name: member.name, settlementDate, settlementAmount });
+                    saveToLocalStorage();
+                    renderMembers();
+                    renderSettlements();
+                } else {
+                    alert("Member not found.");
+                }
+            } else {
+                alert("Please enter all details for settlement.");
+            }
+        }
+
+        function renderSettlements() {
+            const settlementsBody = document.getElementById("settlementsBody");
+            settlementsBody.innerHTML = '';
+            settlements.forEach(settlement => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="editable" contenteditable="true" onblur="updateSettlement(${settlement.memberId}, 'memberId', this.innerText)">${settlement.memberId}</td>
+                    <td class="editable" contenteditable="true" onblur="updateSettlement(${settlement.memberId}, 'name', this.innerText)">${settlement.name}</td>
+                    <td class="editable" contenteditable="true" onblur="updateSettlement(${settlement.memberId}, 'settlementDate', this.innerText)">${settlement.settlementDate}</td>
+                    <td class="editable" contenteditable="true" onblur="updateSettlement(${settlement.memberId}, 'settlementAmount', this.innerText)">${settlement.settlementAmount}</td>
+                `;
+                settlementsBody.appendChild(row);
+            });
+        }
+
+        function updateSettlement(memberId, field, value) {
+            const settlement = settlements.find(s => s.memberId === memberId);
+            if (settlement) {
+                settlement[field] = value;
+                saveToLocalStorage();
+                renderSettlements();
+            }
+        }
+
+        function resetData() {
+            if (confirm("Are you sure you want to reset all data?")) {
+                members = [];
+                settlements = [];
+                saveToLocalStorage();
+                renderMembers();
+                renderSettlements();
+            }
+        }
+
+        function updateTable() {
+    const startDate = new Date(document.getElementById("startDate").value);
+
+    if (startDate) {
+        const tableHeader = document.getElementById("tableHeader");
+
+        // Update table header to include an editable "Total Amount" column
+        tableHeader.innerHTML = `
+            <tr>
+                <th>Member ID</th>
+                <th>Name</th>
+                <th>Total Amount</th> <!-- Editable by user -->
+                <th>Settlement Date</th>
+                <th>Settled Amount</th>
+            </tr>
+        `;
+
+        // Calculate weekly payment dates
+        let currentDate = new Date(startDate);
+        currentDate.setDate(currentDate.getDate() + 7); // Start from the next week
+
+        for (let i = 0; i < 10; i++) {
+            const day = currentDate.getDate();
+            const month = currentDate.toLocaleString('default', { month: 'short' });
+            
+            // Create a new column header for each weekly payment date
+            const th = document.createElement("th");
+            th.innerHTML = `<div>${i + 1}</div><div style="display: flex; justify-content: center; border-top: 1px solid #ddd; padding-top: 5px;">${day}-${month}</div>`;
+            th.style.padding = "15px"; // Adjust padding for column size
+            tableHeader.querySelector("tr").appendChild(th);
+
+            // Move to the next week
+            currentDate.setDate(currentDate.getDate() + 7);
+        }
+
+        // Render members and save to local storage
+        renderMembersWithEditableTotal();
+        saveToLocalStorage();
+    } else {
+        alert("Please enter a valid start date.");
+    }
+}
+
+// Update renderMembers function to include an editable input field for "Total Amount"
+function renderMembersWithEditableTotal() {
+    const tableBody = document.getElementById("tableBody");
+    tableBody.innerHTML = '';
+
+    members.forEach(member => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${member.id}</td>
+            <td>${member.name}</td>
+            <td><input type="number" placeholder="Enter amount" id="totalAmount-${member.id}" /></td>
+            <td>${member.settlementDate || ""}</td>
+            <td>${member.settledAmount || ""}</td>
+        `;
+
+        // Add row to the table body
+        tableBody.appendChild(row);
+    });
+}
+
+
+        function getWeeksFromStartDate(startDate, numberOfWeeks) {
+            let weeks = [];
+            let currentDate = new Date(startDate);
+            currentDate.setDate(currentDate.getDate() + 7); // Start from the next week
+            for (let i = 0; i < numberOfWeeks; i++) {
+                weeks.push(new Date(currentDate));
+                currentDate.setDate(currentDate.getDate() + 7);
+            }
+            return weeks;
+        }
+    </script>
+</body>
+</html>
