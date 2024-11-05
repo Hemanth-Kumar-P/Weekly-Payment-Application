@@ -113,8 +113,10 @@
         <button class="delete-button" onclick="deleteManagement()">Delete Management</button>
         <div>
             <input type="text" id="memberName" placeholder="Enter Member Name">
+            <input type="text" id="phoneNumber" placeholder="Enter Phone Number">
             <button class="add-button" onclick="addMember()">Add Member</button>
         </div>
+        
         <div>
             <input type="date" id="startDate" placeholder="Start Date" onchange="updateTable()">
         </div>
@@ -263,45 +265,51 @@
         }
 
         function addMember() {
-            const memberName = document.getElementById("memberName").value;
-            const memberId = members.length + 1;
-            const startDate = new Date(document.getElementById("startDate").value);
-            const weeks = getWeeksFromStartDate(startDate, 10);
-            if (memberName) {
-                members.push({ id: memberId, name: memberName, payments: Array(weeks.length).fill(0) });
-                saveToLocalStorage();
-                renderMembers();
-                document.getElementById("memberName").value = '';
-            } else {
-                alert("Please enter a member name.");
-            }
-        }
+    const memberName = document.getElementById("memberName").value;
+    const phoneNumber = document.getElementById("phoneNumber").value;
+    const memberId = members.length + 1;
+    const startDate = new Date(document.getElementById("startDate").value);
+    const weeks = getWeeksFromStartDate(startDate, 10);
+    
+    if (memberName && phoneNumber) {
+        members.push({ id: memberId, name: memberName, phone: phoneNumber, payments: Array(weeks.length).fill(0) });
+        saveToLocalStorage();
+        renderMembers();
+        document.getElementById("memberName").value = '';
+        document.getElementById("phoneNumber").value = '';
+    } else {
+        alert("Please enter both a member name and phone number.");
+    }
+}
 
-        function renderMembers() {
-            const membersBody = document.getElementById("membersBody");
-            membersBody.innerHTML = '';
-            members.forEach(member => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${member.id}</td>
-                    <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'name', this.innerText)">${member.name}</td>
-                     <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'totalAmount', parseFloat(this.innerText) || 0)">${member.totalAmount || ''}</td>
-                    <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'settlementDate', this.innerText)">${member.settlementDate || ''}</td>
-                    <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'settlementAmount', this.innerText)">${member.settlementAmount || ''}</td>
-                    ${member.payments.map((payment, index) => `<td class="editable" contenteditable="true" onblur="updatePayment(${member.id}, ${index}, this.innerText)">${payment}</td>`).join('')}
-                `;
-                membersBody.appendChild(row);
-            });
-        }
 
-        function updateMember(memberId, field, value) {
-            const member = members.find(m => m.id === memberId);
-            if (member) {
-                member[field] = value;
-                saveToLocalStorage();
-                renderMembers();
-            }
-        }
+function renderMembers() {
+    const membersBody = document.getElementById("membersBody");
+    membersBody.innerHTML = '';
+    members.forEach(member => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${member.id}</td>
+            <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'name', this.innerText)">${member.name}</td>
+            <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'phone', this.innerText)">${member.phone || ''}</td>
+            <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'totalAmount', parseFloat(this.innerText) || 0)">${member.totalAmount || ''}</td>
+            <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'settlementDate', this.innerText)">${member.settlementDate || ''}</td>
+            <td class="editable" contenteditable="true" onblur="updateMember(${member.id}, 'settlementAmount', this.innerText)">${member.settlementAmount || ''}</td>
+            ${member.payments.map((payment, index) => `<td class="editable" contenteditable="true" onblur="updatePayment(${member.id}, ${index}, this.innerText)">${payment}</td>`).join('')}
+        `;
+        membersBody.appendChild(row);
+    });
+}
+
+
+function updateMember(memberId, field, value) {
+    const member = members.find(m => m.id === memberId);
+    if (member) {
+        member[field] = field === 'totalAmount' || field === 'settlementAmount' ? parseFloat(value) || 0 : value;
+        saveToLocalStorage();
+        renderMembers();
+    }
+}
 
         function updatePayment(memberId, weekIndex, value) {
             const member = members.find(m => m.id === memberId);
@@ -444,6 +452,7 @@
             <tr>
                 <th>Member ID</th>
                 <th>Name</th>
+                <th>Phone Number</th>
                 <th>Total Amount</th> <!-- Editable by user -->
                 <th>Settlement Date</th>
                 <th>Settled Amount</th>
